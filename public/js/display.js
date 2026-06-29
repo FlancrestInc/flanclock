@@ -111,16 +111,18 @@ function formatDate(now) {
       .formatToParts(now)
       .map((part) => [part.type, part.value])
   );
-  return f
-    .replaceAll("cccc", weekdayLong)
-    .replaceAll("ccc", weekdayShort)
-    .replaceAll("LLLL", monthLong)
-    .replaceAll("LLL", monthShort)
-    .replaceAll("yyyy", numeric.year)
-    .replaceAll("MM", numeric.month.padStart(2, "0"))
-    .replaceAll("M", numeric.month)
-    .replaceAll("dd", numeric.day.padStart(2, "0"))
-    .replaceAll("d", numeric.day);
+  const replacements = {
+    cccc: weekdayLong,
+    ccc: weekdayShort,
+    LLLL: monthLong,
+    LLL: monthShort,
+    yyyy: numeric.year,
+    MM: numeric.month.padStart(2, "0"),
+    M: numeric.month,
+    dd: numeric.day.padStart(2, "0"),
+    d: numeric.day
+  };
+  return f.replace(/cccc|ccc|LLLL|LLL|yyyy|MM|M|dd|d/g, (token) => replacements[token]);
 }
 
 function renderSevenSegment(parts, date) {

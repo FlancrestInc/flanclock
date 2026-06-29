@@ -71,10 +71,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(5px, 1.3vw, 12px);
+  width: 100%;
+  max-width: 780px;
+  gap: clamp(3px, 1vw, 10px);
   color: var(--led);
   font-family: "Courier New", monospace;
-  font-size: clamp(92px, 22vw, 190px);
+  font-size: clamp(64px, 18vw, 160px);
   font-weight: 900;
   line-height: 0.95;
   text-shadow: 0 0 12px var(--led), 0 0 36px var(--led-soft);
