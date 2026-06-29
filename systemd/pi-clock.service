@@ -1,0 +1,17 @@
+[Unit]
+Description=Raspberry Pi Clock Display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/pi-clock-display
+EnvironmentFile=/home/pi/pi-clock-display/.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+User=pi
+Group=pi
+
+[Install]
+WantedBy=multi-user.target
