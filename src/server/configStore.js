@@ -48,6 +48,7 @@ export class ConfigStore {
     delete config.admin;
     config.face.photo.immichServerUrl = "";
     config.providers.immich.serverUrl = "";
+    config.providers.immich.apiKey = "";
     return config;
   }
 

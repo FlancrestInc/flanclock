@@ -52,7 +52,8 @@ export const DEFAULT_CONFIG = {
   providers: {
     immich: {
       serverUrl: "",
-      albumId: ""
+      albumId: "",
+      apiKey: ""
     },
     icloud: {
       publicAlbumUrl: ""

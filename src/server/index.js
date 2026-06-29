@@ -135,7 +135,7 @@ export async function createApp(env = process.env) {
   app.get("/api/photos", async (_req, res) => {
     try {
       const photos = await photoService.listPhotos(store.get());
-      res.json({ status: "ok", photos: photos.map(({ filePath, serverUrl, remoteId, ...photo }) => photo) });
+      res.json({ status: "ok", photos: photos.map(({ filePath, serverUrl, remoteId, apiKey, ...photo }) => photo) });
     } catch (error) {
       res.json({ status: "error", error: error.message, photos: [] });
     }

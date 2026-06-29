@@ -20,8 +20,9 @@ test("updates public clock settings and hides admin data", async () => {
   const store = new ConfigStore({ configPath: path.join(dir, "config.json"), adminPassword: "secret123" });
   await store.init();
 
-  await store.update({ display: { timezone: "UTC", hourMode: "24" } });
+  await store.update({ display: { timezone: "UTC", hourMode: "24" }, providers: { immich: { apiKey: "secret-key" } } });
 
   expect(store.get().display.timezone).toBe("UTC");
   expect(store.getPublic().admin).toBeUndefined();
+  expect(store.getPublic().providers.immich.apiKey).toBe("");
 });

@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import mime from "mime-types";
 
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".avif"]);
+const ICLOUD_SHARED_STREAM_HOST = "p23-sharedstreams.icloud.com";
 
 function hashId(value) {
   return crypto.createHash("sha1").update(value).digest("hex").slice(0, 24);
@@ -11,10 +12,27 @@ function hashId(value) {
 
 function normalizeBaseUrl(input) {
   const url = new URL(input);
-  url.pathname = url.pathname.replace(/\/+$/, "");
-  url.search = "";
-  url.hash = "";
-  return url.toString();
+  const pathname = url.pathname.replace(/\/+$/, "");
+  return `${url.origin}${pathname}`;
+}
+
+function getIcloudAlbumToken(input) {
+  const url = new URL(input);
+  const token = url.hash.replace(/^#/, "") || url.pathname.split("/").filter(Boolean).at(-1);
+  if (!token || !/^[a-zA-Z0-9_-]+$/.test(token)) throw new Error("Invalid iCloud shared album URL.");
+  return token;
+}
+
+function largestDerivative(photo) {
+  return Object.values(photo.derivatives || {})
+    .filter((derivative) => derivative?.checksum)
+    .sort((a, b) => Number(b.fileSize || 0) - Number(a.fileSize || 0))[0];
+}
+
+function icloudAssetUrl(asset) {
+  if (!asset?.url_location || !asset?.url_path) return "";
+  const scheme = asset.scheme || "https";
+  return `${scheme}://${asset.url_location}${asset.url_path}`;
 }
 
 export class PhotoService {
@@ -60,9 +78,9 @@ export class PhotoService {
   async listImmich(config) {
     const serverUrl = config.face.photo.immichServerUrl || config.providers.immich.serverUrl;
     const albumId = config.face.photo.immichAlbumId || config.providers.immich.albumId;
-    const apiKey = process.env.IMMICH_API_KEY || "";
+    const apiKey = config.providers.immich.apiKey || process.env.IMMICH_API_KEY || "";
     if (!serverUrl || !albumId || !apiKey) return [];
-    const cacheKey = `immich:${serverUrl}:${albumId}`;
+    const cacheKey = `immich:${serverUrl}:${albumId}:${hashId(apiKey)}`;
     const cached = this.readMetadataCache(cacheKey, 10 * 60 * 1000);
     if (cached) return cached;
     const base = normalizeBaseUrl(serverUrl);
@@ -79,7 +97,8 @@ export class PhotoService {
         title: asset.originalFileName || asset.id,
         url: `/api/photos/immich-${asset.id}`,
         remoteId: asset.id,
-        serverUrl: base
+        serverUrl: base,
+        apiKey
       }));
     this.writeMetadataCache(cacheKey, photos);
     return photos;
@@ -91,23 +110,33 @@ export class PhotoService {
     const cacheKey = `icloud:${publicAlbumUrl}`;
     const cached = this.readMetadataCache(cacheKey, 30 * 60 * 1000);
     if (cached) return cached;
-    const html = await (await this.fetch(publicAlbumUrl)).text();
-    const imageUrls = [...html.matchAll(/https:\\?\/\\?\/[^"']+\.(?:jpg|jpeg|png|webp)[^"']*/gi)]
-      .map((match) => match[0].replaceAll("\\/", "/"))
-      .filter((value, index, arr) => arr.indexOf(value) === index)
+    const token = getIcloudAlbumToken(publicAlbumUrl);
+    const { stream, baseUrl } = await this.fetchIcloudStream(token);
+    const photosWithDerivatives = (stream.photos || [])
+      .map((photo) => ({ photo, derivative: largestDerivative(photo) }))
+      .filter(({ photo, derivative }) => photo.photoGuid && derivative?.checksum)
       .slice(0, 200);
-    const photos = imageUrls.map((url, index) => ({
-      id: `icloud-${hashId(url)}`,
-      source: "icloud",
-      title: `iCloud photo ${index + 1}`,
-      url
-    }));
+    if (!photosWithDerivatives.length) {
+      this.writeMetadataCache(cacheKey, []);
+      return [];
+    }
+    const assets = await this.postJson(`${baseUrl}/webasseturls`, {
+      photoGuids: photosWithDerivatives.map(({ photo }) => photo.photoGuid)
+    });
+    const photos = photosWithDerivatives
+      .map(({ photo, derivative }, index) => ({
+        id: `icloud-${photo.photoGuid}`,
+        source: "icloud",
+        title: photo.caption || `iCloud photo ${index + 1}`,
+        url: icloudAssetUrl(assets.items?.[derivative.checksum])
+      }))
+      .filter((photo) => photo.url);
     this.writeMetadataCache(cacheKey, photos);
     return photos;
   }
 
   async streamImmichAsset(photo) {
-    const apiKey = process.env.IMMICH_API_KEY || "";
+    const apiKey = photo.apiKey || process.env.IMMICH_API_KEY || "";
     const response = await this.fetch(`${photo.serverUrl}/api/assets/${photo.remoteId}/thumbnail?size=preview`, {
       headers: { "x-api-key": apiKey }
     });
@@ -125,14 +154,38 @@ export class PhotoService {
     this.metadataCache.set(key, { fetchedAt: Date.now(), value });
   }
 
-  async testImmich({ serverUrl, albumId }) {
-    const apiKey = process.env.IMMICH_API_KEY || "";
+  async postJson(url, body) {
+    const response = await this.fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const data = await response.json();
+    if (!response.ok && response.status !== 330) throw new Error(`iCloud returned ${response.status}`);
+    return data;
+  }
+
+  async fetchIcloudStream(token) {
+    let host = ICLOUD_SHARED_STREAM_HOST;
+    let baseUrl = `https://${host}/${token}/sharedstreams`;
+    let stream = await this.postJson(`${baseUrl}/webstream`, { streamCtag: null });
+    const redirectedHost = stream["X-Apple-MMe-Host"];
+    if (redirectedHost) {
+      host = redirectedHost;
+      baseUrl = `https://${host}/${token}/sharedstreams`;
+      stream = await this.postJson(`${baseUrl}/webstream`, { streamCtag: null });
+    }
+    return { stream, baseUrl };
+  }
+
+  async testImmich({ serverUrl, albumId, apiKey }) {
+    apiKey ||= process.env.IMMICH_API_KEY || "";
     if (!serverUrl || !albumId || !apiKey) {
-      return { status: "error", error: "Immich server URL, album ID, and IMMICH_API_KEY are required." };
+      return { status: "error", error: "Immich server URL, album ID, and API key are required." };
     }
     const config = {
       face: { photo: { source: "immich", immichServerUrl: serverUrl, immichAlbumId: albumId } },
-      providers: { immich: { serverUrl, albumId }, icloud: { publicAlbumUrl: "" } }
+      providers: { immich: { serverUrl, albumId, apiKey }, icloud: { publicAlbumUrl: "" } }
     };
     const photos = await this.listImmich(config);
     return { status: "ok", count: photos.length };

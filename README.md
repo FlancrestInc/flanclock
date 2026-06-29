@@ -53,7 +53,7 @@ PORT=3000
 HOST=0.0.0.0
 SESSION_SECRET=change-this-long-random-string
 ADMIN_PASSWORD=clockadmin
-IMMICH_API_KEY=your-immich-api-key
+IMMICH_API_KEY=optional-fallback-immich-api-key
 CONFIG_PATH=./data/config.json
 PHOTO_CACHE_DIR=./data/cache/photos
 LOCAL_PHOTO_DIR=./data/photos
@@ -85,18 +85,18 @@ Put images in `data/photos`, or set another folder in the admin page. Supported 
 
 Paste a public iCloud shared album URL into the admin page and select `icloud` as the photo source. This app only uses public shared links and does not require private iCloud credentials. Metadata is cached in memory and refreshed periodically.
 
-Apple may change public album page markup over time; if the test button reports zero photos for a valid public album, the adapter in `src/server/photos.js` is the place to update.
+Apple may change public shared album API responses over time; if the test button reports zero photos for a valid public album, the adapter in `src/server/photos.js` is the place to update.
 
 ### Immich Albums
 
 Set:
 
-- `IMMICH_API_KEY` in `.env`
 - Immich server URL in the admin page
 - Immich album ID in the admin page
+- Immich API key in the admin page
 - Photo source to `immich`
 
-The browser never receives the Immich API key. Images are proxied through `/api/photos/:id`.
+The browser never receives the saved Immich API key. Images are proxied through `/api/photos/:id`. `IMMICH_API_KEY` in `.env` is still supported as a fallback when no key is saved in the admin configuration.
 
 ## Weather
 

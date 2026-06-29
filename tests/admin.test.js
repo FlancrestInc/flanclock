@@ -19,6 +19,10 @@ function setupAdminDom() {
     { name: "weather.longitude", type: "number", value: "" },
     { name: "weather.units", type: "select-one", value: "fahrenheit" },
     { name: "weather.cacheTtlMinutes", type: "number", value: "20" },
+    { name: "face.photo.immichServerUrl", type: "url", value: "https://immich.example" },
+    { name: "face.photo.immichAlbumId", type: "text", value: "album-1" },
+    { name: "face.photo.icloudUrl", type: "url", value: "" },
+    { name: "providers.immich.apiKey", type: "password", value: "" },
     { name: "admin.password", type: "password", value: "" }
   ];
   const elements = new Map([
@@ -102,4 +106,26 @@ test("reports when browser location detection is unavailable", async () => {
   await handlers.get('[data-test="weather-location"]:click')();
 
   expect(elements.get("#weatherStatus").textContent).toBe("Location detection is not available in this browser.");
+});
+
+test("sends entered Immich API key when testing Immich", async () => {
+  const { fields, handlers } = setupAdminDom();
+  fields.find((field) => field.name === "providers.immich.apiKey").value = "secret-key";
+
+  await import("../public/js/admin.js");
+  await handlers.get('[data-test="immich"]:click')();
+
+  expect(globalThis.fetch).toHaveBeenLastCalledWith("/api/test/immich", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      providers: {
+        immich: {
+          serverUrl: "https://immich.example",
+          albumId: "album-1",
+          apiKey: "secret-key"
+        }
+      }
+    })
+  });
 });

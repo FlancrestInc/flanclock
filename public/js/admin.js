@@ -26,13 +26,16 @@ function readForm() {
   for (const field of fields) {
     const value = field.type === "checkbox" ? field.checked : coerce(field);
     if (field.name === "admin.password" && !value) continue;
+    if (field.name === "providers.immich.apiKey" && !value) continue;
     setPath(data, field.name, value);
   }
   data.weather.provider = "openMeteo";
+  const immichApiKey = data.providers?.immich?.apiKey;
   data.providers = {
     immich: {
       serverUrl: data.face.photo.immichServerUrl,
-      albumId: data.face.photo.immichAlbumId
+      albumId: data.face.photo.immichAlbumId,
+      ...(immichApiKey ? { apiKey: immichApiKey } : {})
     },
     icloud: {
       publicAlbumUrl: data.face.photo.icloudUrl
@@ -152,7 +155,15 @@ document.querySelector('[data-test="immich"]').addEventListener("click", async (
     const result = await fetchJson("/api/test/immich", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ providers: { immich: { serverUrl: formData.face.photo.immichServerUrl, albumId: formData.face.photo.immichAlbumId } } })
+      body: JSON.stringify({
+        providers: {
+          immich: {
+            serverUrl: formData.face.photo.immichServerUrl,
+            albumId: formData.face.photo.immichAlbumId,
+            ...(formData.providers.immich.apiKey ? { apiKey: formData.providers.immich.apiKey } : {})
+          }
+        }
+      })
     });
     photoStatus.textContent = result.status === "ok" ? `Found ${result.count} photos.` : result.error;
   } catch (error) {

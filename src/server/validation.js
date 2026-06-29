@@ -72,7 +72,8 @@ export const configSchema = z.object({
   providers: z.object({
     immich: z.object({
       serverUrl: safeUrl,
-      albumId: z.string().max(200)
+      albumId: z.string().max(200),
+      apiKey: z.string().max(500)
     }),
     icloud: z.object({
       publicAlbumUrl: safeUrl
