@@ -23,10 +23,12 @@ beforeEach(async () => {
 test("serves display and public config", async () => {
   const display = await request(app).get("/");
   const config = await request(app).get("/api/config");
+  const health = await request(app).get("/healthz");
 
   expect(display.text).toContain("Pi Clock");
   expect(config.body.display.timezone).toBe("America/Denver");
   expect(config.body.admin).toBeUndefined();
+  expect(health.body.status).toBe("ok");
 });
 
 test("protects config updates behind admin login", async () => {

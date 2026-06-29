@@ -54,6 +54,10 @@ export async function createApp(env = process.env) {
   app.get("/", (_req, res) => res.sendFile(path.join(publicDir, "display.html")));
   app.use("/static", express.static(publicDir, { maxAge: "1h" }));
 
+  app.get("/healthz", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+
   app.get("/admin", (req, res) => {
     if (!req.session.authenticated) return res.sendFile(path.join(publicDir, "login.html"));
     return res.sendFile(path.join(publicDir, "admin.html"));

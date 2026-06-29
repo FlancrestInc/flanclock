@@ -137,11 +137,47 @@ sudo systemctl enable --now pi-clock.service
 
 ## Docker
 
-Docker is optional. Running directly with Node is simpler on a Pi, but these files are provided:
+Build and run with Compose:
 
 ```bash
+cp .env.example .env
+mkdir -p data/photos data/cache/photos
 docker compose up --build
 ```
+
+Then open:
+
+- Clock display: `http://localhost:3000/`
+- Admin: `http://localhost:3000/admin`
+
+Run detached:
+
+```bash
+docker compose up -d --build
+```
+
+Stop it:
+
+```bash
+docker compose down
+```
+
+Or build and run without Compose:
+
+```bash
+docker build -t pi-clock-display .
+docker run --rm \
+  --name pi-clock-display \
+  --env-file .env \
+  -e CONFIG_PATH=/app/data/config.json \
+  -e PHOTO_CACHE_DIR=/app/data/cache/photos \
+  -e LOCAL_PHOTO_DIR=/app/data/photos \
+  -p 3000:3000 \
+  -v "$PWD/data:/app/data" \
+  pi-clock-display
+```
+
+The image runs as the non-root `node` user and stores persistent config, cache, and local photos in `/app/data`. On Raspberry Pi OS, the default `pi` user is usually UID 1000, which matches the container user and keeps the bind-mounted `./data` directory writable.
 
 ## Development
 
