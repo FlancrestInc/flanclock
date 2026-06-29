@@ -2,9 +2,11 @@ const form = document.querySelector("#configForm");
 const saveStatus = document.querySelector("#saveStatus");
 const weatherStatus = document.querySelector("#weatherStatus");
 const photoStatus = document.querySelector("#photoStatus");
+const detectLocationButton = document.querySelector('[data-test="weather-location"]');
 let config;
 
 const fields = [...form.querySelectorAll("[name]")];
+const fieldsByName = new Map(fields.map((field) => [field.name, field]));
 
 async function boot() {
   config = await fetchJson("/api/config");
@@ -58,6 +60,32 @@ function setPath(object, path, value) {
   current[parts.at(-1)] = value;
 }
 
+function setFieldValue(name, value) {
+  const field = fieldsByName.get(name);
+  if (field) field.value = value;
+}
+
+function detectLocation() {
+  if (!navigator.geolocation) {
+    return Promise.reject(new Error("Location detection is not available in this browser."));
+  }
+
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      maximumAge: 300000,
+      timeout: 10000
+    });
+  });
+}
+
+function describeLocationError(error) {
+  if (error.code === 1) return "Location permission was denied.";
+  if (error.code === 2) return "Location could not be determined.";
+  if (error.code === 3) return "Location detection timed out.";
+  return error.message || "Location detection failed.";
+}
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   saveStatus.textContent = "Saving...";
@@ -70,6 +98,21 @@ form.addEventListener("submit", async (event) => {
     saveStatus.textContent = "Saved.";
   } catch (error) {
     saveStatus.textContent = error.message;
+  }
+});
+
+detectLocationButton.addEventListener("click", async () => {
+  weatherStatus.textContent = "Detecting location...";
+  detectLocationButton.disabled = true;
+  try {
+    const position = await detectLocation();
+    setFieldValue("weather.latitude", position.coords.latitude.toFixed(4));
+    setFieldValue("weather.longitude", position.coords.longitude.toFixed(4));
+    weatherStatus.textContent = "Location detected. Save configuration to keep it.";
+  } catch (error) {
+    weatherStatus.textContent = describeLocationError(error);
+  } finally {
+    detectLocationButton.disabled = false;
   }
 });
 
