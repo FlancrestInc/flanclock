@@ -8,6 +8,7 @@ let config;
 const fields = [...form.querySelectorAll("[name]")];
 const fieldsByName = new Map(fields.map((field) => [field.name, field]));
 const conditionalElements = [...form.querySelectorAll("[data-show-when]")];
+const photoSourceElements = [...form.querySelectorAll("[data-photo-source]")];
 
 async function boot() {
   config = await fetchJson("/api/config");
@@ -50,6 +51,7 @@ function syncConditionalFields() {
   for (const element of conditionalElements) {
     element.hidden = !matchesVisibilityRule(element.dataset.showWhen);
   }
+  syncPhotoSourceFields();
 }
 
 function matchesVisibilityRule(rule) {
@@ -57,6 +59,13 @@ function matchesVisibilityRule(rule) {
   const field = fieldsByName.get(fieldName);
   if (!field) return true;
   return expectedValues.split(",").includes(field.value);
+}
+
+function syncPhotoSourceFields() {
+  const selectedSource = fieldsByName.get("face.photo.source")?.value;
+  for (const element of photoSourceElements) {
+    element.hidden = element.dataset.photoSource !== selectedSource;
+  }
 }
 
 function coerce(field) {

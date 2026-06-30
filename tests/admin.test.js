@@ -139,14 +139,18 @@ test("shows only configuration fields relevant to the selected face and photo so
   ];
   const conditionals = [
     { dataset: { showWhen: "face.type:modern" }, hidden: false },
-    { dataset: { showWhen: "face.type:photo" }, hidden: false },
-    { dataset: { showWhen: "face.photo.source:icloud" }, hidden: false },
-    { dataset: { showWhen: "face.photo.source:immich" }, hidden: false }
+    { dataset: { showWhen: "face.type:photo" }, hidden: false }
+  ];
+  const photoSourceElements = [
+    { dataset: { photoSource: "local" }, hidden: false },
+    { dataset: { photoSource: "icloud" }, hidden: false },
+    { dataset: { photoSource: "immich" }, hidden: false }
   ];
   const form = {
     querySelectorAll: (selector) => {
       if (selector === "[name]") return fields;
       if (selector === "[data-show-when]") return conditionals;
+      if (selector === "[data-photo-source]") return photoSourceElements;
       return [];
     },
     addEventListener: vi.fn()
@@ -174,14 +178,16 @@ test("shows only configuration fields relevant to the selected face and photo so
   await import("../public/js/admin.js");
   await vi.waitFor(() => expect(conditionals[0].hidden).toBe(false));
 
-  expect(conditionals.map((element) => element.hidden)).toEqual([false, true, false, true]);
+  expect(conditionals.map((element) => element.hidden)).toEqual([false, true]);
+  expect(photoSourceElements.map((element) => element.hidden)).toEqual([true, false, true]);
 
   fields[0].value = "photo";
   fields[1].value = "immich";
   handlers.get("face.type")();
   handlers.get("face.photo.source")();
 
-  expect(conditionals.map((element) => element.hidden)).toEqual([true, false, true, false]);
+  expect(conditionals.map((element) => element.hidden)).toEqual([true, false]);
+  expect(photoSourceElements.map((element) => element.hidden)).toEqual([true, true, false]);
 });
 
 test("does not offer clock face density in the admin page", async () => {
