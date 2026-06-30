@@ -239,6 +239,116 @@ test("keeps the current photo visible until the next photo has loaded", async ()
   });
 });
 
+test("does not restart an in-flight photo transition on clock render ticks", async () => {
+  vi.useFakeTimers();
+  const elements = new Map();
+  const createElement = () => ({
+    className: "",
+    dataset: {},
+    innerHTML: "",
+    style: {
+      backgroundImage: "",
+      setProperty: vi.fn()
+    },
+    classList: {
+      add: vi.fn(function add(className) {
+        this.owner.className = `${this.owner.className} ${className}`.trim();
+      })
+    }
+  });
+  const clockElement = createElement();
+  const faceElement = createElement();
+  const stageElement = {
+    ...createElement(),
+    append: vi.fn(function append(...children) {
+      this.children = children;
+    })
+  };
+  stageElement.classList.owner = stageElement;
+  elements.set("#clock", clockElement);
+  elements.set("#face", faceElement);
+  elements.set("#photoStage", stageElement);
+
+  const imageLoads = [];
+  globalThis.Image = class {
+    set src(value) {
+      this._src = value;
+      imageLoads.push(this);
+    }
+  };
+  globalThis.document = {
+    createElement: () => {
+      const element = createElement();
+      element.classList.owner = element;
+      return element;
+    },
+    querySelector: (selector) => elements.get(selector)
+  };
+  globalThis.EventSource = class {
+    addEventListener() {}
+  };
+  globalThis.fetch = vi.fn(async (url) => ({
+    ok: true,
+    json: async () => {
+      if (url === "/api/config") {
+        return {
+          display: {
+            timezone: "UTC",
+            hourMode: "24",
+            showSeconds: false,
+            showDate: false,
+            dateFormat: "ccc, LLL d",
+            datePosition: "below",
+            brightness: { enabled: false }
+          },
+          face: {
+            type: "photo",
+            theme: "red",
+            modern: { color: "#fff", backgroundColor: "#000", fontScale: 1, density: "comfortable", font: "systemSans" },
+            photo: {
+              overlayOpacity: 0.62,
+              overlayPosition: "bottom-left",
+              rotationIntervalSeconds: 5,
+              transitionType: "slide",
+              transitionDurationMs: 900,
+              transitionDirection: "left",
+              transitionIntensity: "normal",
+              enableKenBurns: true,
+              showDate: false,
+              showWeather: false
+            }
+          },
+          weather: { enabled: false }
+        };
+      }
+      if (url === "/api/photos") {
+        return {
+          photos: [
+            { id: "one", url: "/api/photos/one" },
+            { id: "two", url: "/api/photos/two" }
+          ]
+        };
+      }
+      return { status: "error" };
+    }
+  }));
+
+  await import("../public/js/display.js");
+  await vi.waitFor(() => expect(imageLoads).toHaveLength(1));
+  imageLoads[0].onload();
+  await vi.waitFor(() => expect(stageElement.style.backgroundImage).toBe('url("/api/photos/one")'));
+
+  vi.advanceTimersByTime(5000);
+  await vi.waitFor(() => expect(imageLoads).toHaveLength(2));
+  imageLoads[1].onload();
+  await vi.waitFor(() => expect(stageElement.className).toContain("is-transitioning"));
+  const transitionClass = stageElement.className;
+
+  vi.advanceTimersByTime(250);
+  expect(stageElement.className).toBe(transitionClass);
+  expect(imageLoads).toHaveLength(2);
+});
+
 test("skips a failed slideshow image and keeps loading later photos", async () => {
   vi.useFakeTimers();
   vi.spyOn(console, "warn").mockImplementation(() => {});

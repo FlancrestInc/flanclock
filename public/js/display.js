@@ -8,6 +8,7 @@ let photoTimer;
 let photoTransitionTimer;
 let currentPhotoUrl = "";
 let pendingPhotoUrl = "";
+let transitioningPhotoUrl = "";
 let photoLoadToken = 0;
 let lastTransitionType = "";
 let photoLayers;
@@ -61,20 +62,21 @@ function showPhoto() {
     photoLoadToken += 1;
     currentPhotoUrl = "";
     pendingPhotoUrl = "";
+    transitioningPhotoUrl = "";
     resetPhotoStage();
     return;
   }
-  setPhotoStageClass();
   const photo = photos[photoIndex % Math.max(photos.length, 1)];
   const url = photo?.url || "";
   if (!url) {
     photoLoadToken += 1;
     currentPhotoUrl = "";
     pendingPhotoUrl = "";
+    transitioningPhotoUrl = "";
     resetPhotoStage();
     return;
   }
-  if (url === currentPhotoUrl || url === pendingPhotoUrl) return;
+  if (url === currentPhotoUrl || url === pendingPhotoUrl || url === transitioningPhotoUrl) return;
 
   const token = photoLoadToken + 1;
   photoLoadToken = token;
@@ -98,6 +100,8 @@ function transitionToPhoto(url) {
   const layers = ensurePhotoLayers();
   if (!layers || !currentPhotoUrl) {
     currentPhotoUrl = url;
+    transitioningPhotoUrl = "";
+    setPhotoStageClass();
     setStageFallbackImage(url);
     setLayerImage(layers?.current, url);
     return;
@@ -108,6 +112,7 @@ function transitionToPhoto(url) {
     previousType: lastTransitionType
   });
   lastTransitionType = transition.type;
+  transitioningPhotoUrl = url;
 
   setLayerImage(layers.current, currentPhotoUrl);
   setLayerImage(layers.next, url);
@@ -120,6 +125,7 @@ function transitionToPhoto(url) {
 
   photoTransitionTimer = setTimeout(() => {
     currentPhotoUrl = url;
+    transitioningPhotoUrl = "";
     setStageFallbackImage(url);
     setLayerImage(layers.current, url);
     setLayerImage(layers.next, "");
@@ -141,6 +147,7 @@ function ensurePhotoLayers() {
 
 function resetPhotoStage() {
   clearTimeout(photoTransitionTimer);
+  transitioningPhotoUrl = "";
   setStageFallbackImage("");
   if (photoLayers) {
     setLayerImage(photoLayers.current, "");
