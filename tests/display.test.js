@@ -81,3 +81,21 @@ test("keeps the seven-segment time row below the 800px display cap", async () =>
 
   expect(sevenTimeRule).toMatch(/max-width:\s*(?:min\([^;]*800px|7[0-9]{2}px)/);
 });
+
+test("uses Raspberry Pi OS Lite default font families for display faces", async () => {
+  const css = await fs.readFile(new URL("../public/css/display.css", import.meta.url), "utf8");
+
+  expect(css).toContain('"DejaVu Sans", sans-serif');
+  expect(css).toContain('"DejaVu Serif", serif');
+  expect(css).toContain('"DejaVu Sans Mono", monospace');
+  expect(css).not.toMatch(/-apple-system|BlinkMacSystemFont|Segoe UI|Courier New|Times New Roman|SFMono|Consolas|Trebuchet MS|Arial Rounded/i);
+});
+
+test("admin labels only offer Raspberry Pi OS Lite-safe font choices", async () => {
+  const html = await fs.readFile(new URL("../public/admin.html", import.meta.url), "utf8");
+
+  expect(html).toContain("DejaVu Sans");
+  expect(html).toContain("DejaVu Serif");
+  expect(html).toContain("DejaVu Sans Mono");
+  expect(html).not.toMatch(/>[^<]*(Rounded|geometric|System sans|System serif)[^<]*</i);
+});

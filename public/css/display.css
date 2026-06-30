@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: "DejaVu Sans", sans-serif;
   background: #000;
 }
 
@@ -75,7 +75,7 @@ body {
   max-width: 780px;
   gap: clamp(3px, 1vw, 10px);
   color: var(--led);
-  font-family: "Courier New", monospace;
+  font-family: "DejaVu Sans Mono", monospace;
   font-size: clamp(64px, 18vw, 160px);
   font-weight: 900;
   line-height: 0.95;
@@ -110,7 +110,7 @@ body {
 }
 
 .seven-meta {
-  font-family: "Courier New", monospace;
+  font-family: "DejaVu Sans Mono", monospace;
   text-shadow: 0 0 10px var(--led-soft);
 }
 
@@ -141,7 +141,7 @@ body {
 .tube span,
 .nixie-colon {
   color: #ffb35c;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "DejaVu Serif", serif;
   font-size: clamp(82px, 18vw, 160px);
   line-height: 1;
   text-shadow: 0 0 6px #ff7a1f, 0 0 26px rgba(255, 109, 20, 0.92), 0 0 54px rgba(255, 84, 0, 0.36);
@@ -186,16 +186,20 @@ body {
   font-size: clamp(21px, 4vw, 34px);
 }
 
+.font-systemSans .modern-face {
+  font-family: "DejaVu Sans", sans-serif;
+}
+
 .font-systemSerif .modern-face {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "DejaVu Serif", serif;
 }
 
 .font-monospace .modern-face {
-  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-family: "DejaVu Sans Mono", monospace;
 }
 
 .font-rounded .modern-face {
-  font-family: "Trebuchet MS", "Arial Rounded MT Bold", system-ui, sans-serif;
+  font-family: "DejaVu Sans", sans-serif;
 }
 
 .density-compact .modern-face {
