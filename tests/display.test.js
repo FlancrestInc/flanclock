@@ -4,12 +4,14 @@ import fs from "node:fs/promises";
 const RealDate = globalThis.Date;
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.resetModules();
   globalThis.Date = RealDate;
   delete globalThis.document;
   delete globalThis.fetch;
   delete globalThis.EventSource;
+  delete globalThis.Image;
 });
 
 test("renders weekday names without date token replacement corrupting them", async () => {
@@ -137,6 +139,103 @@ test("renders seven-segment time with vector digit images", async () => {
     expect(html).toContain('class="seven-segment-digit"');
     expect(html).toContain("/static/img/seven-segment/1.svg");
     expect(html).toContain("/static/img/seven-segment/colon.svg");
+  });
+});
+
+test("keeps the current photo visible until the next photo has loaded", async () => {
+  vi.useFakeTimers();
+  const elements = new Map();
+  const element = () => ({
+    className: "",
+    dataset: {},
+    innerHTML: "",
+    style: {
+      backgroundImage: "",
+      setProperty: vi.fn()
+    }
+  });
+  elements.set("#clock", element());
+  elements.set("#face", element());
+  elements.set("#photoStage", element());
+
+  const imageLoads = [];
+  globalThis.Image = class {
+    set src(value) {
+      this._src = value;
+      imageLoads.push(this);
+    }
+
+    get src() {
+      return this._src;
+    }
+  };
+  globalThis.document = {
+    querySelector: (selector) => elements.get(selector)
+  };
+  globalThis.EventSource = class {
+    addEventListener() {}
+  };
+  globalThis.fetch = vi.fn(async (url) => ({
+    ok: true,
+    json: async () => {
+      if (url === "/api/config") {
+        return {
+          display: {
+            timezone: "UTC",
+            hourMode: "24",
+            showSeconds: false,
+            showDate: false,
+            dateFormat: "ccc, LLL d",
+            datePosition: "below",
+            brightness: { enabled: false }
+          },
+          face: {
+            type: "photo",
+            theme: "red",
+            modern: { color: "#fff", backgroundColor: "#000", fontScale: 1, density: "comfortable", font: "systemSans" },
+            photo: {
+              overlayOpacity: 0.62,
+              overlayPosition: "bottom-left",
+              rotationIntervalSeconds: 5,
+              showDate: false,
+              showWeather: false
+            }
+          },
+          weather: { enabled: false }
+        };
+      }
+      if (url === "/api/photos") {
+        return {
+          photos: [
+            { id: "one", url: "/api/photos/one" },
+            { id: "two", url: "/api/photos/two" }
+          ]
+        };
+      }
+      return { status: "error" };
+    }
+  }));
+
+  await import("../public/js/display.js");
+  await vi.waitFor(() => {
+    expect(imageLoads).toHaveLength(1);
+  });
+  expect(elements.get("#photoStage").style.backgroundImage).toBe("");
+
+  imageLoads[0].onload();
+  await vi.waitFor(() => {
+    expect(elements.get("#photoStage").style.backgroundImage).toBe('url("/api/photos/one")');
+  });
+
+  vi.advanceTimersByTime(5000);
+  await vi.waitFor(() => {
+    expect(imageLoads).toHaveLength(2);
+  });
+  expect(elements.get("#photoStage").style.backgroundImage).toBe('url("/api/photos/one")');
+
+  imageLoads[1].onload();
+  await vi.waitFor(() => {
+    expect(elements.get("#photoStage").style.backgroundImage).toBe('url("/api/photos/two")');
   });
 });
 

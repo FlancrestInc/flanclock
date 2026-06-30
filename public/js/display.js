@@ -3,6 +3,9 @@ let weather;
 let photos = [];
 let photoIndex = 0;
 let photoTimer;
+let currentPhotoUrl = "";
+let pendingPhotoUrl = "";
+let photoLoadToken = 0;
 
 const clock = document.querySelector("#clock");
 const face = document.querySelector("#face");
@@ -36,6 +39,7 @@ async function refreshPhotos() {
   if (!config || config.face.type !== "photo") return;
   const result = await fetchJson("/api/photos").catch(() => ({ photos: [] }));
   photos = result.photos || [];
+  if (photoIndex >= photos.length) photoIndex = 0;
   clearInterval(photoTimer);
   photoTimer = setInterval(nextPhoto, config.face.photo.rotationIntervalSeconds * 1000);
   showPhoto();
@@ -49,11 +53,48 @@ function nextPhoto() {
 
 function showPhoto() {
   if (config.face.type !== "photo") {
+    photoLoadToken += 1;
+    currentPhotoUrl = "";
+    pendingPhotoUrl = "";
     photoStage.style.backgroundImage = "";
     return;
   }
   const photo = photos[photoIndex % Math.max(photos.length, 1)];
-  photoStage.style.backgroundImage = photo ? `url("${photo.url}")` : "";
+  const url = photo?.url || "";
+  if (!url) {
+    photoLoadToken += 1;
+    currentPhotoUrl = "";
+    pendingPhotoUrl = "";
+    photoStage.style.backgroundImage = "";
+    return;
+  }
+  if (url === currentPhotoUrl || url === pendingPhotoUrl) return;
+
+  const token = photoLoadToken + 1;
+  photoLoadToken = token;
+  pendingPhotoUrl = url;
+  preloadPhoto(url)
+    .then(() => {
+      if (token !== photoLoadToken || config.face.type !== "photo") return;
+      currentPhotoUrl = url;
+      pendingPhotoUrl = "";
+      photoStage.style.backgroundImage = `url("${url}")`;
+    })
+    .catch(() => {
+      if (token === photoLoadToken) pendingPhotoUrl = "";
+    });
+}
+
+function preloadPhoto(url) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = resolve;
+    image.onerror = reject;
+    image.src = url;
+    if (image.decode) {
+      image.decode().then(resolve).catch(() => {});
+    }
+  });
 }
 
 function render() {
