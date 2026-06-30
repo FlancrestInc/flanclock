@@ -7,10 +7,12 @@ let config;
 
 const fields = [...form.querySelectorAll("[name]")];
 const fieldsByName = new Map(fields.map((field) => [field.name, field]));
+const conditionalElements = [...form.querySelectorAll("[data-show-when]")];
 
 async function boot() {
   config = await fetchJson("/api/config");
   fillForm(config);
+  syncConditionalFields();
 }
 
 function fillForm(data) {
@@ -42,6 +44,19 @@ function readForm() {
     }
   };
   return data;
+}
+
+function syncConditionalFields() {
+  for (const element of conditionalElements) {
+    element.hidden = !matchesVisibilityRule(element.dataset.showWhen);
+  }
+}
+
+function matchesVisibilityRule(rule) {
+  const [fieldName, expectedValues] = rule.split(":");
+  const field = fieldsByName.get(fieldName);
+  if (!field) return true;
+  return expectedValues.split(",").includes(field.value);
 }
 
 function coerce(field) {
@@ -103,6 +118,10 @@ form.addEventListener("submit", async (event) => {
     saveStatus.textContent = error.message;
   }
 });
+
+for (const fieldName of ["face.type", "face.photo.source"]) {
+  fieldsByName.get(fieldName)?.addEventListener?.("change", syncConditionalFields);
+}
 
 detectLocationButton.addEventListener("click", async () => {
   weatherStatus.textContent = "Detecting location...";

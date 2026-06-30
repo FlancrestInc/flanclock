@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { afterEach, expect, test, vi } from "vitest";
 
 afterEach(() => {
@@ -128,4 +129,64 @@ test("sends entered Immich API key when testing Immich", async () => {
       }
     })
   });
+});
+
+test("shows only configuration fields relevant to the selected face and photo source", async () => {
+  const handlers = new Map();
+  const fields = [
+    { name: "face.type", type: "select-one", value: "modern", addEventListener: (event, handler) => handlers.set("face.type", handler) },
+    { name: "face.photo.source", type: "select-one", value: "icloud", addEventListener: (event, handler) => handlers.set("face.photo.source", handler) }
+  ];
+  const conditionals = [
+    { dataset: { showWhen: "face.type:modern" }, hidden: false },
+    { dataset: { showWhen: "face.type:photo" }, hidden: false },
+    { dataset: { showWhen: "face.photo.source:icloud" }, hidden: false },
+    { dataset: { showWhen: "face.photo.source:immich" }, hidden: false }
+  ];
+  const form = {
+    querySelectorAll: (selector) => {
+      if (selector === "[name]") return fields;
+      if (selector === "[data-show-when]") return conditionals;
+      return [];
+    },
+    addEventListener: vi.fn()
+  };
+  const elements = new Map([
+    ["#configForm", form],
+    ["#saveStatus", { textContent: "" }],
+    ["#weatherStatus", { textContent: "" }],
+    ["#photoStatus", { textContent: "" }]
+  ]);
+  for (const selector of ['[data-test="weather"]', '[data-test="weather-location"]', '[data-test="icloud"]', '[data-test="immich"]']) {
+    elements.set(selector, { disabled: false, addEventListener: vi.fn() });
+  }
+  globalThis.document = { querySelector: (selector) => elements.get(selector) };
+  globalThis.fetch = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      face: {
+        type: "modern",
+        photo: { source: "icloud" }
+      }
+    })
+  }));
+
+  await import("../public/js/admin.js");
+  await vi.waitFor(() => expect(conditionals[0].hidden).toBe(false));
+
+  expect(conditionals.map((element) => element.hidden)).toEqual([false, true, false, true]);
+
+  fields[0].value = "photo";
+  fields[1].value = "immich";
+  handlers.get("face.type")();
+  handlers.get("face.photo.source")();
+
+  expect(conditionals.map((element) => element.hidden)).toEqual([true, false, true, false]);
+});
+
+test("does not offer clock face density in the admin page", async () => {
+  const html = await fs.readFile(new URL("../public/admin.html", import.meta.url), "utf8");
+
+  expect(html).not.toContain('name="face.modern.density"');
+  expect(html).not.toContain(">Density<");
 });
