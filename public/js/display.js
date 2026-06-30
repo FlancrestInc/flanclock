@@ -1,11 +1,16 @@
+import { preloadImage, resolvePhotoTransition, transitionCssVars } from "./slideshowTransitions.js";
+
 let config;
 let weather;
 let photos = [];
 let photoIndex = 0;
 let photoTimer;
+let photoTransitionTimer;
 let currentPhotoUrl = "";
 let pendingPhotoUrl = "";
 let photoLoadToken = 0;
+let lastTransitionType = "";
+let photoLayers;
 
 const clock = document.querySelector("#clock");
 const face = document.querySelector("#face");
@@ -56,16 +61,17 @@ function showPhoto() {
     photoLoadToken += 1;
     currentPhotoUrl = "";
     pendingPhotoUrl = "";
-    photoStage.style.backgroundImage = "";
+    resetPhotoStage();
     return;
   }
+  setPhotoStageClass();
   const photo = photos[photoIndex % Math.max(photos.length, 1)];
   const url = photo?.url || "";
   if (!url) {
     photoLoadToken += 1;
     currentPhotoUrl = "";
     pendingPhotoUrl = "";
-    photoStage.style.backgroundImage = "";
+    resetPhotoStage();
     return;
   }
   if (url === currentPhotoUrl || url === pendingPhotoUrl) return;
@@ -73,28 +79,109 @@ function showPhoto() {
   const token = photoLoadToken + 1;
   photoLoadToken = token;
   pendingPhotoUrl = url;
-  preloadPhoto(url)
+  preloadImage(url)
     .then(() => {
       if (token !== photoLoadToken || config.face.type !== "photo") return;
-      currentPhotoUrl = url;
+      transitionToPhoto(url);
       pendingPhotoUrl = "";
-      photoStage.style.backgroundImage = `url("${url}")`;
     })
-    .catch(() => {
-      if (token === photoLoadToken) pendingPhotoUrl = "";
+    .catch((error) => {
+      if (token === photoLoadToken) {
+        pendingPhotoUrl = "";
+        skipFailedPhoto(url, error);
+      }
     });
 }
 
-function preloadPhoto(url) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = resolve;
-    image.onerror = reject;
-    image.src = url;
-    if (image.decode) {
-      image.decode().then(resolve).catch(() => {});
-    }
+function transitionToPhoto(url) {
+  clearTimeout(photoTransitionTimer);
+  const layers = ensurePhotoLayers();
+  if (!layers || !currentPhotoUrl) {
+    currentPhotoUrl = url;
+    setStageFallbackImage(url);
+    setLayerImage(layers?.current, url);
+    return;
+  }
+
+  const transition = resolvePhotoTransition(config.face.photo, {
+    reducedMotion: prefersReducedMotion(),
+    previousType: lastTransitionType
   });
+  lastTransitionType = transition.type;
+
+  setLayerImage(layers.current, currentPhotoUrl);
+  setLayerImage(layers.next, url);
+  applyTransitionVars(transition);
+  setPhotoStageClass(`transition-${transition.type} direction-${transition.direction} intensity-${transition.intensity}`);
+  layers.current.className = "photo-layer photo-layer-current";
+  layers.next.className = "photo-layer photo-layer-next";
+  void photoStage.offsetWidth;
+  photoStage.classList.add("is-transitioning");
+
+  photoTransitionTimer = setTimeout(() => {
+    currentPhotoUrl = url;
+    setStageFallbackImage(url);
+    setLayerImage(layers.current, url);
+    setLayerImage(layers.next, "");
+    setPhotoStageClass();
+  }, transition.durationMs);
+}
+
+function ensurePhotoLayers() {
+  if (photoLayers) return photoLayers;
+  if (!photoStage || !document.createElement || !photoStage.append) return null;
+  const current = document.createElement("div");
+  const next = document.createElement("div");
+  current.className = "photo-layer photo-layer-current";
+  next.className = "photo-layer photo-layer-next";
+  photoStage.append(current, next);
+  photoLayers = { current, next };
+  return photoLayers;
+}
+
+function resetPhotoStage() {
+  clearTimeout(photoTransitionTimer);
+  setStageFallbackImage("");
+  if (photoLayers) {
+    setLayerImage(photoLayers.current, "");
+    setLayerImage(photoLayers.next, "");
+  }
+  setPhotoStageClass();
+}
+
+function setPhotoStageClass(extraClass = "") {
+  const kenBurnsClass = config?.face?.type === "photo" && config.face.photo.enableKenBurns ? "ken-burns-enabled" : "";
+  photoStage.className = ["photo-stage", kenBurnsClass, extraClass].filter(Boolean).join(" ");
+}
+
+function setLayerImage(layer, url) {
+  if (!layer) return;
+  layer.style.backgroundImage = url ? `url("${url}")` : "";
+}
+
+function setStageFallbackImage(url) {
+  photoStage.style.backgroundImage = url ? `url("${url}")` : "";
+}
+
+function applyTransitionVars(transition) {
+  const vars = transitionCssVars(transition);
+  for (const [name, value] of Object.entries(vars)) {
+    photoStage.style.setProperty(name, value);
+  }
+}
+
+function skipFailedPhoto(url, error) {
+  console.warn(`Skipping failed slideshow photo ${url}: ${error.message}`);
+  if (photos.length <= 1) return;
+  const failedIndex = photos.findIndex((photo) => photo.url === url);
+  if (failedIndex === photoIndex) {
+    photoIndex = (photoIndex + 1) % photos.length;
+  }
+  showPhoto();
+}
+
+function prefersReducedMotion() {
+  return Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
 }
 
 function render() {

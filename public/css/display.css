@@ -237,11 +237,164 @@ body {
 }
 
 .photo-stage {
+  --photo-transition-duration: 900ms;
+  --slide-x: -100%;
+  --slide-y: 0%;
+  --cube-rotation: 64deg;
+  --glitch-blur: 3px;
   position: absolute;
   inset: 0;
   z-index: 0;
   background: #050505 center / cover no-repeat;
-  transition: opacity 450ms ease;
+  overflow: hidden;
+  perspective: 950px;
+  transform-style: preserve-3d;
+}
+
+.photo-stage::before,
+.photo-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.photo-stage::before {
+  z-index: 4;
+  background: #000;
+}
+
+.photo-stage::after {
+  z-index: 5;
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.14) 0 1px, transparent 1px 4px),
+    linear-gradient(90deg, rgba(255, 40, 40, 0.18), transparent 18%, rgba(40, 180, 255, 0.16) 84%, transparent);
+  mix-blend-mode: screen;
+}
+
+.photo-layer {
+  position: absolute;
+  inset: 0;
+  background: #050505 center / cover no-repeat;
+  will-change: transform, opacity, clip-path, mask-image;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+.photo-layer-current {
+  z-index: 1;
+  opacity: 1;
+}
+
+.photo-layer-next {
+  z-index: 2;
+  opacity: 0;
+}
+
+.ken-burns-enabled:not(.is-transitioning) .photo-layer-current {
+  animation: photo-ken-idle 28s ease-in-out alternate infinite;
+}
+
+.is-transitioning .photo-layer-current,
+.is-transitioning .photo-layer-next {
+  animation-duration: var(--photo-transition-duration);
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.transition-crossfade.is-transitioning .photo-layer-current {
+  animation-name: photo-current-fade;
+}
+
+.transition-crossfade.is-transitioning .photo-layer-next {
+  animation-name: photo-next-fade;
+}
+
+.transition-dip-to-black.is-transitioning .photo-layer-current {
+  animation-name: photo-current-dip;
+}
+
+.transition-dip-to-black.is-transitioning .photo-layer-next {
+  animation-name: photo-next-dip;
+}
+
+.transition-dip-to-black.is-transitioning::before {
+  animation: photo-dip-black var(--photo-transition-duration) ease both;
+}
+
+.transition-slide.is-transitioning .photo-layer-current,
+.transition-push.is-transitioning .photo-layer-current {
+  animation-name: photo-slide-current;
+}
+
+.transition-slide.is-transitioning .photo-layer-next,
+.transition-push.is-transitioning .photo-layer-next {
+  animation-name: photo-slide-next;
+}
+
+.transition-slide.is-transitioning .photo-layer-current {
+  opacity: 0.85;
+}
+
+.transition-ken-burns-fade.is-transitioning .photo-layer-current {
+  animation-name: photo-ken-current;
+}
+
+.transition-ken-burns-fade.is-transitioning .photo-layer-next {
+  animation-name: photo-ken-next;
+}
+
+.transition-clock-wipe.is-transitioning .photo-layer-current {
+  animation-name: photo-current-fade-soft;
+}
+
+.transition-clock-wipe.is-transitioning .photo-layer-next {
+  opacity: 1;
+  animation-name: photo-clock-wipe;
+  -webkit-mask-image: conic-gradient(#000 0deg, #000 0deg, transparent 0deg);
+  mask-image: conic-gradient(#000 0deg, #000 0deg, transparent 0deg);
+}
+
+.transition-iris-wipe.is-transitioning .photo-layer-current,
+.transition-star-wipe.is-transitioning .photo-layer-current {
+  animation-name: photo-current-fade-soft;
+}
+
+.transition-iris-wipe.is-transitioning .photo-layer-next {
+  opacity: 1;
+  animation-name: photo-iris-wipe;
+  clip-path: circle(0% at 50% 50%);
+}
+
+.transition-star-wipe.is-transitioning .photo-layer-next {
+  opacity: 1;
+  animation-name: photo-star-wipe;
+  clip-path: polygon(50% 50%, 53% 53%, 50% 50%, 47% 53%, 50% 50%, 47% 47%, 50% 50%, 53% 47%);
+}
+
+.transition-cube-rotate.is-transitioning .photo-layer-current {
+  transform-origin: center center;
+  animation-name: photo-cube-current;
+}
+
+.transition-cube-rotate.is-transitioning .photo-layer-next {
+  transform-origin: center center;
+  animation-name: photo-cube-next;
+}
+
+.transition-vhs-glitch.is-transitioning .photo-layer-current {
+  animation-name: photo-vhs-current;
+  animation-timing-function: steps(6, end);
+}
+
+.transition-vhs-glitch.is-transitioning .photo-layer-next {
+  animation-name: photo-vhs-next;
+  animation-timing-function: steps(6, end);
+}
+
+.transition-vhs-glitch.is-transitioning::after {
+  animation: photo-vhs-overlay var(--photo-transition-duration) steps(6, end) both;
 }
 
 .clock-screen[data-face="photo"]::after {
@@ -317,5 +470,222 @@ body {
 @keyframes pulse {
   50% {
     opacity: 0.25;
+  }
+}
+
+@keyframes photo-current-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes photo-next-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes photo-current-fade-soft {
+  55% {
+    opacity: 0.88;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+
+@keyframes photo-current-dip {
+  0%, 38% {
+    opacity: 1;
+  }
+  62%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes photo-next-dip {
+  0%, 48% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes photo-dip-black {
+  0%, 100% {
+    opacity: 0;
+  }
+  48%, 62% {
+    opacity: 1;
+  }
+}
+
+@keyframes photo-slide-current {
+  to {
+    transform: translate3d(var(--slide-x), var(--slide-y), 0);
+  }
+}
+
+@keyframes photo-slide-next {
+  from {
+    opacity: 1;
+    transform: translate3d(calc(var(--slide-x) * -1), calc(var(--slide-y) * -1), 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes photo-ken-current {
+  from {
+    opacity: 1;
+    transform: var(--ken-start);
+  }
+  to {
+    opacity: 0;
+    transform: var(--ken-end);
+  }
+}
+
+@keyframes photo-ken-next {
+  from {
+    opacity: 0;
+    transform: var(--ken-next-start);
+  }
+  to {
+    opacity: 1;
+    transform: var(--ken-next-end);
+  }
+}
+
+@keyframes photo-ken-idle {
+  from {
+    transform: scale(1.02) translate3d(-0.8%, 0.5%, 0);
+  }
+  to {
+    transform: scale(1.08) translate3d(0.9%, -0.6%, 0);
+  }
+}
+
+@keyframes photo-clock-wipe {
+  from {
+    -webkit-mask-image: conic-gradient(#000 0deg, transparent 0deg);
+    mask-image: conic-gradient(#000 0deg, transparent 0deg);
+  }
+  to {
+    -webkit-mask-image: conic-gradient(#000 360deg, transparent 360deg);
+    mask-image: conic-gradient(#000 360deg, transparent 360deg);
+  }
+}
+
+@keyframes photo-iris-wipe {
+  to {
+    clip-path: circle(76% at 50% 50%);
+  }
+}
+
+@keyframes photo-star-wipe {
+  to {
+    clip-path: polygon(50% -28%, 62% 34%, 123% 10%, 72% 50%, 123% 90%, 62% 66%, 50% 128%, 38% 66%, -23% 90%, 28% 50%, -23% 10%, 38% 34%);
+  }
+}
+
+@keyframes photo-cube-current {
+  to {
+    opacity: 0;
+    transform: rotateY(calc(var(--cube-rotation) * -1)) translate3d(var(--slide-x), var(--slide-y), -120px);
+  }
+}
+
+@keyframes photo-cube-next {
+  from {
+    opacity: 0;
+    transform: rotateY(var(--cube-rotation)) translate3d(calc(var(--slide-x) * -0.5), calc(var(--slide-y) * -0.5), -120px);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(0deg) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes photo-vhs-current {
+  0%, 100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  20% {
+    opacity: 0.74;
+    transform: translate3d(-1.4%, 0.6%, 0);
+  }
+  42% {
+    opacity: 0.35;
+    transform: translate3d(1.8%, -0.5%, 0);
+    filter: blur(var(--glitch-blur));
+  }
+  58% {
+    opacity: 0;
+    transform: translate3d(-0.8%, 0, 0);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes photo-vhs-next {
+  0%, 38% {
+    opacity: 0;
+    transform: translate3d(1.2%, 0, 0);
+  }
+  48% {
+    opacity: 0.86;
+    transform: translate3d(-1%, 0.4%, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes photo-vhs-overlay {
+  0%, 100% {
+    opacity: 0;
+  }
+  22%, 56% {
+    opacity: 0.38;
+  }
+}
+
+@supports not (clip-path: circle(50% at 50% 50%)) {
+  .transition-iris-wipe.is-transitioning .photo-layer-next,
+  .transition-star-wipe.is-transitioning .photo-layer-next {
+    animation-name: photo-next-fade;
+  }
+}
+
+@supports not (mask-image: conic-gradient(#000 0deg, transparent 0deg)) {
+  .transition-clock-wipe.is-transitioning .photo-layer-next {
+    animation-name: photo-next-fade;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-transitioning .photo-layer-current,
+  .is-transitioning .photo-layer-next,
+  .photo-stage::before,
+  .photo-stage::after {
+    animation-duration: 250ms !important;
+  }
+
+  .is-transitioning .photo-layer-current {
+    animation-name: photo-current-fade !important;
+  }
+
+  .is-transitioning .photo-layer-next {
+    animation-name: photo-next-fade !important;
+    clip-path: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
   }
 }

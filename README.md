@@ -59,7 +59,7 @@ PHOTO_CACHE_DIR=./data/cache/photos
 LOCAL_PHOTO_DIR=./data/photos
 ```
 
-The admin page controls all user-facing clock options: timezone, hour mode, seconds, date, face, themes, modern font/colors, weather, photo source, album settings, rotation interval, overlay settings, dimming schedule, and admin password.
+The admin page controls all user-facing clock options: timezone, hour mode, seconds, date, face, themes, modern font/colors, weather, photo source, album settings, slideshow transitions, rotation interval, overlay settings, dimming schedule, and admin password.
 
 ## Date Formats
 
@@ -80,6 +80,20 @@ Example: `cccc, LLLL d` renders like `Monday, June 29`.
 ### Local Folder
 
 Put images in `data/photos`, or set another folder in the admin page. Supported extensions are `jpg`, `jpeg`, `png`, `gif`, `webp`, and `avif`.
+
+### Slideshow Transitions
+
+The photo face preloads the next image before animating, keeps only the current and next photo layers active, and leaves the clock/date/weather overlay fixed above the slideshow. If a photo fails to load, the display logs a warning and skips to the next photo.
+
+Photo transition settings:
+
+- `transitionType`: `crossfade`, `dip-to-black`, `slide`, `push`, `ken-burns-fade`, `clock-wipe`, `iris-wipe`, `star-wipe`, `cube-rotate`, `vhs-glitch`, or `random`
+- `transitionDurationMs`: `250` to `3000`, default `900`
+- `transitionDirection`: `left`, `right`, `up`, `down`, or `random`, default `random`; used by `slide` and `push`
+- `transitionIntensity`: `subtle`, `normal`, or `dramatic`, default `normal`
+- `enableKenBurns`: default `true` for photo slideshow mode
+
+When the browser reports reduced motion, animated transitions fall back to a short crossfade.
 
 ### iCloud Public Shared Albums
 

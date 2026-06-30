@@ -16,6 +16,20 @@ const safeUrl = z
     }
   }, "Must be a valid http(s) URL");
 
+const photoTransitionType = z.enum([
+  "crossfade",
+  "dip-to-black",
+  "slide",
+  "push",
+  "ken-burns-fade",
+  "clock-wipe",
+  "iris-wipe",
+  "star-wipe",
+  "cube-rotate",
+  "vhs-glitch",
+  "random"
+]);
+
 export const configSchema = z.object({
   admin: z
     .object({
@@ -54,6 +68,11 @@ export const configSchema = z.object({
       immichServerUrl: safeUrl,
       immichAlbumId: z.string().max(200),
       rotationIntervalSeconds: z.number().int().min(5).max(3600),
+      transitionType: photoTransitionType,
+      transitionDurationMs: z.number().int().min(250).max(3000),
+      transitionDirection: z.enum(["left", "right", "up", "down", "random"]),
+      transitionIntensity: z.enum(["subtle", "normal", "dramatic"]),
+      enableKenBurns: z.boolean(),
       overlayPosition: z.enum(["top-left", "top-right", "bottom-left", "bottom-right", "center"]),
       overlayOpacity: z.number().min(0).max(1),
       showDate: z.boolean(),
