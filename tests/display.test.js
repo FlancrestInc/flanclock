@@ -75,6 +75,71 @@ test("renders weekday names without date token replacement corrupting them", asy
   expect(elements.get("#face").innerHTML).not.toContain("6on29ay");
 });
 
+test("renders seven-segment time with vector digit images", async () => {
+  const elements = new Map();
+  const element = () => ({
+    className: "",
+    dataset: {},
+    innerHTML: "",
+    style: {
+      setProperty: vi.fn()
+    }
+  });
+  elements.set("#clock", element());
+  elements.set("#face", element());
+  elements.set("#photoStage", element());
+
+  globalThis.document = {
+    querySelector: (selector) => elements.get(selector)
+  };
+  globalThis.EventSource = class {
+    addEventListener() {}
+  };
+  globalThis.fetch = vi.fn(async (url) => ({
+    ok: true,
+    json: async () => {
+      if (url === "/api/config") {
+        return {
+          display: {
+            timezone: "UTC",
+            hourMode: "24",
+            showSeconds: false,
+            showDate: false,
+            dateFormat: "ccc, LLL d",
+            datePosition: "below",
+            brightness: { enabled: false }
+          },
+          face: {
+            type: "sevenSegment",
+            theme: "red",
+            modern: { color: "#fff", backgroundColor: "#000", fontScale: 1, density: "comfortable", font: "systemSans" },
+            photo: { overlayOpacity: 0.62 }
+          },
+          weather: { enabled: false }
+        };
+      }
+      return { status: "error" };
+    }
+  }));
+  globalThis.Date = class extends RealDate {
+    constructor(...args) {
+      if (args.length) return super(...args);
+      return new RealDate("2026-06-29T12:34:00Z");
+    }
+  };
+  globalThis.Date.UTC = RealDate.UTC;
+  globalThis.Date.parse = RealDate.parse;
+  globalThis.Date.now = () => new RealDate("2026-06-29T12:34:00Z").getTime();
+
+  await import("../public/js/display.js");
+  await vi.waitFor(() => {
+    const html = elements.get("#face").innerHTML;
+    expect(html).toContain('class="seven-segment-digit"');
+    expect(html).toContain("/static/img/seven-segment/1.svg");
+    expect(html).toContain("/static/img/seven-segment/colon.svg");
+  });
+});
+
 test("keeps the seven-segment time row below the 800px display cap", async () => {
   const css = await fs.readFile(new URL("../public/css/display.css", import.meta.url), "utf8");
   const sevenTimeRule = css.match(/\.seven-time\s*\{(?<body>[^}]+)\}/)?.groups?.body || "";

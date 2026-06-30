@@ -177,7 +177,11 @@ function weatherLine(extraClass) {
 }
 
 function digits(text) {
-  return [...text].map((char) => `<span class="${char === ":" ? "colon" : "digit"}">${char}</span>`).join("");
+  return [...text].map((char) => {
+    const name = char === ":" ? "colon" : char;
+    const className = char === ":" ? "seven-segment-colon" : "seven-segment-digit";
+    return `<span class="${className}" aria-hidden="true" style="--segment-src: url('/static/img/seven-segment/${name}.svg')"></span>`;
+  }).join("");
 }
 
 function applyBrightness(now) {

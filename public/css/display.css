@@ -75,25 +75,51 @@ body {
   max-width: 780px;
   gap: clamp(3px, 1vw, 10px);
   color: var(--led);
-  font-family: "DejaVu Sans Mono", monospace;
-  font-size: clamp(64px, 18vw, 160px);
-  font-weight: 900;
-  line-height: 0.95;
-  text-shadow: 0 0 12px var(--led), 0 0 36px var(--led-soft);
-  letter-spacing: 0;
 }
 
-.seven-time .digit {
-  width: 0.64em;
-  text-align: center;
-  border: 0.035em solid currentColor;
-  border-radius: 0.08em;
-  box-shadow: inset 0 0 0.08em currentColor, 0 0 0.1em var(--led);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 42%, rgba(0, 0, 0, 0.16));
+.seven-segment-digit,
+.seven-segment-colon {
+  display: block;
+  flex: 0 0 auto;
+  height: clamp(116px, 30vw, 224px);
+  position: relative;
 }
 
-.seven-time .colon {
-  width: 0.22em;
+.seven-segment-digit::before,
+.seven-segment-digit::after,
+.seven-segment-colon::before,
+.seven-segment-colon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+}
+
+.seven-segment-digit::before {
+  opacity: 0.14;
+  -webkit-mask: url("/static/img/seven-segment/8.svg") center / contain no-repeat;
+  mask: url("/static/img/seven-segment/8.svg") center / contain no-repeat;
+}
+
+.seven-segment-colon::before {
+  opacity: 0.12;
+  -webkit-mask: url("/static/img/seven-segment/colon.svg") center / contain no-repeat;
+  mask: url("/static/img/seven-segment/colon.svg") center / contain no-repeat;
+}
+
+.seven-segment-digit::after,
+.seven-segment-colon::after {
+  filter: drop-shadow(0 0 8px var(--led)) drop-shadow(0 0 24px var(--led-soft));
+  -webkit-mask: var(--segment-src) center / contain no-repeat;
+  mask: var(--segment-src) center / contain no-repeat;
+}
+
+.seven-segment-digit {
+  width: clamp(64px, 17vw, 124px);
+}
+
+.seven-segment-colon {
+  width: clamp(16px, 4vw, 32px);
   animation: pulse 1s steps(2, start) infinite;
 }
 
